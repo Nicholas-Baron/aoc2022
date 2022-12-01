@@ -1,23 +1,21 @@
 use std::error::Error;
 use std::fs;
+use std::str::FromStr;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let filename = "input.txt";
 
-    let mut elves: Vec<Vec<u32>> = vec![vec![]];
-
-    let raw_data = fs::read_to_string(filename)?;
-
-    for line in raw_data.lines() {
-        if line == "" {
-            // Separation line
-            elves.push(vec![]);
-        } else {
-            elves.last_mut().unwrap().push(line.parse()?);
-        }
-    }
-
-    let mut calorie_counts: Vec<u32> = elves.into_iter().map(|elf| elf.into_iter().sum()).collect();
+    let mut calorie_counts = fs::read_to_string(filename)?.lines().try_fold(
+        vec![0],
+        |mut acc, line| -> Result<_, <u32 as FromStr>::Err> {
+            if line.is_empty() {
+                acc.push(0);
+            } else {
+                *acc.last_mut().unwrap() += u32::from_str(line)?;
+            }
+            Ok(acc)
+        },
+    )?;
 
     calorie_counts.sort_unstable_by(|lhs, rhs| rhs.cmp(lhs));
 
