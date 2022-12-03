@@ -1,34 +1,32 @@
 import Data.Char (isUpper, ord)
 import Data.List (find)
-import Data.Maybe (fromJust)
+import Data.Maybe (mapMaybe)
 
-findBadge :: [String] -> Char
-findBadge [] = error "empty group"
-findBadge (bag : bags) = fromJust $ find (\x -> all (\b -> x `elem` b) bags) bag
+findBadge :: [String] -> Maybe Char
+findBadge [] = Nothing
+findBadge (bag : bags) = find (\x -> all (\b -> x `elem` b) bags) bag
 
-bothCompartmentItem :: String -> Char
+bothCompartmentItem :: String -> Maybe Char
 bothCompartmentItem str = findCommonItem lhs rhs
   where
-    findCommonItem :: String -> String -> Char
-    findCommonItem set [] = error "no common item"
-    findCommonItem set (x : xs) = if x `elem` set then x else findCommonItem set xs
+    findCommonItem :: Eq a => [a] -> [a] -> Maybe a
+    findCommonItem lhs = find (`elem` lhs)
 
-    lhs = take (length str `div` 2) str
-    rhs = drop (length str `div` 2) str
+    (lhs, rhs) = splitAt (length str `div` 2) str
 
 priorities :: Char -> Int
 priorities c = if isUpper c then (ord c - ord 'A') + 27 else (ord c - ord 'a') + 1
 
-chunksOf3 :: [a] -> [[a]]
-chunksOf3 [] = []
-chunksOf3 input = let (lhs, rhs) = splitAt 3 input in (lhs : chunksOf3 rhs)
+chunksOf :: Int -> [a] -> [[a]]
+chunksOf _ [] = []
+chunksOf n input = let (lhs, rhs) = splitAt n input in (lhs : chunksOf n rhs)
 
 main = do
   input <- readFile "input.txt"
-  let bags = lines input
-      itemsToRearrange = map bothCompartmentItem bags
-  print $ sum $ map priorities itemsToRearrange
 
-  let badges = map findBadge $ chunksOf3 bags
-  print $ chunksOf3 bags
+  let bags = lines input
+      itemsToRearrange = mapMaybe bothCompartmentItem bags
+      badges = mapMaybe findBadge $ chunksOf 3 bags
+
+  print $ sum $ map priorities itemsToRearrange
   print $ sum $ map priorities badges
