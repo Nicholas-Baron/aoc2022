@@ -1,7 +1,6 @@
 C++
 C
 Typescript
-Scala
 F#
 Python
 Lisp
