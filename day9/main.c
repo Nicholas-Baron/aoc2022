@@ -1,8 +1,10 @@
+#include <assert.h>
 #include <fcntl.h> // open
 #include <iso646.h>
 #include <stdbool.h>  // bool
 #include <stdio.h>    // perror
 #include <stdlib.h>   // malloc
+#include <string.h>   // memset
 #include <sys/mman.h> // mmap
 #include <sys/stat.h> // fstat
 #include <unistd.h>   // close
@@ -25,11 +27,12 @@ static void add_to_tail(struct tail_visited ** list, struct location loc) {
         new_node->next = *list;
         *list = new_node;
     }
+
     (*list)->loc = loc;
 }
 
 static struct tail_visited * tail_list = NULL;
-static struct location head_location = {.x = 0, .y = 0};
+static struct location rope[10];
 
 static int count_visited_locations() {
     struct tail_visited * visited_list = NULL;
@@ -60,18 +63,49 @@ static int count_visited_locations() {
 }
 
 static void move_head_to(struct location loc) {
-    if (tail_list == NULL) { add_to_tail(&tail_list, head_location); }
+    if (tail_list == NULL) { add_to_tail(&tail_list, rope[0]); }
 
-    if (abs(tail_list->loc.x - loc.x) > 1 or abs(tail_list->loc.y - loc.y) > 1) {
-        bool is_diagonal
-            = head_location.x != tail_list->loc.x and head_location.y != tail_list->loc.y;
-        bool reversing = (loc.x == tail_list->loc.x and loc.y == tail_list->loc.y)
-                      or (loc.x == head_location.x and loc.y == head_location.y);
+    // printf("rope[0] : (%2d, %2d)\nloc: (%2d, %2d)\n", rope[0].x, rope[0].y, loc.x, loc.y);
 
-        if (is_diagonal or not reversing) { add_to_tail(&tail_list, head_location); }
+    rope[0] = loc;
+
+    for (size_t index = 1; index < sizeof(rope) / sizeof(*rope); ++index) {
+        struct location prev_knot = rope[index - 1];
+        printf("prev_knot : (%2d, %2d); rope[%2zu]: (%2d, %2d)\n", prev_knot.x, prev_knot.y, index,
+               rope[index].x, rope[index].y);
+        if (abs(rope[index].x - prev_knot.x) <= 1 and abs(rope[index].y - prev_knot.y) <= 1) {
+            break;
+        }
+
+        int deltaX = abs(rope[index].x - prev_knot.x);
+        int deltaY = abs(rope[index].y - prev_knot.y);
+
+        assert(deltaX <= 2);
+        assert(deltaY <= 2);
+
+        if (deltaX == 2 and deltaY == 0) {
+            rope[index].x += (rope[index].x > prev_knot.x) ? -1 : 1;
+        } else if (deltaY == 2 and deltaX == 0) {
+            rope[index].y += (rope[index].y > prev_knot.y) ? -1 : 1;
+        } else if (deltaX == 2 and deltaY >= 1) {
+            rope[index].x += (rope[index].x > prev_knot.x) ? -1 : 1;
+            rope[index].y += (rope[index].y > prev_knot.y) ? -1 : 1;
+        } else if (deltaY == 2 and deltaX >= 1) {
+            rope[index].x += (rope[index].x > prev_knot.x) ? -1 : 1;
+            rope[index].y += (rope[index].y > prev_knot.y) ? -1 : 1;
+        } else {
+            break;
+        }
     }
 
-    head_location = loc;
+    struct location current_tail = rope[sizeof(rope) / sizeof(*rope) - 1];
+    assert(abs(current_tail.x - tail_list->loc.x) <= 1
+           and abs(current_tail.y - tail_list->loc.y) <= 1);
+
+    if (current_tail.x != tail_list->loc.x or current_tail.y != tail_list->loc.y) {
+        printf("Moving tail to (%2d,%2d)\n", current_tail.x, current_tail.y);
+        add_to_tail(&tail_list, current_tail);
+    }
 }
 
 static void parse_line(const char * start_of_line) {
@@ -86,32 +120,42 @@ static void parse_line(const char * start_of_line) {
         return;
     }
 
+    printf("Moving %u units\n", distance);
+
+    struct location * head_location = rope;
+
     switch (*start_of_line) {
     case 'R':
         // go right
         for (unsigned i = 0; i < distance; ++i) {
-            move_head_to(((struct location){.x = head_location.x + 1, .y = head_location.y}));
+            move_head_to(((struct location){.x = head_location->x + 1, .y = head_location->y}));
         }
         break;
     case 'U':
         // go up
         for (unsigned i = 0; i < distance; ++i) {
-            move_head_to(((struct location){.x = head_location.x, .y = head_location.y + 1}));
+            move_head_to(((struct location){.x = head_location->x, .y = head_location->y + 1}));
         }
         break;
     case 'L':
         // go left
         for (unsigned i = 0; i < distance; ++i) {
-            move_head_to(((struct location){.x = head_location.x - 1, .y = head_location.y}));
+            move_head_to(((struct location){.x = head_location->x - 1, .y = head_location->y}));
         }
         break;
     case 'D':
         // go down
         for (unsigned i = 0; i < distance; ++i) {
-            move_head_to(((struct location){.x = head_location.x, .y = head_location.y - 1}));
+            move_head_to(((struct location){.x = head_location->x, .y = head_location->y - 1}));
         }
         break;
     }
+
+    printf("[");
+    for (size_t index = 0; index < sizeof(rope) / sizeof(*rope); ++index) {
+        printf("(%2d, %2d) ", rope[index].x, rope[index].y);
+    }
+    puts("]");
 }
 
 int main(const int arg_count, const char * const * const args) {
@@ -147,6 +191,8 @@ int main(const int arg_count, const char * const * const args) {
         perror("close(input.txt)");
         return 4;
     }
+
+    memset(rope, 0, sizeof(rope));
 
     // Parse input
     for (const char * iter = data; iter < data + size;) {
