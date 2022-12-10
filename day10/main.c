@@ -1,6 +1,7 @@
 #include <fcntl.h> // open
 #include <iso646.h>
 #include <stdio.h>    // printf
+#include <stdlib.h>   // abs
 #include <sys/mman.h> // mmap
 #include <sys/stat.h> // fstat
 #include <unistd.h>   // close
@@ -10,6 +11,13 @@ static int x_reg = 1;
 static int cycle_count = 0;
 
 static void tick() {
+    // crt drawing
+    if (cycle_count % 40 == 0) { putchar('\n'); }
+    if (abs((cycle_count % 40) - x_reg) <= 1) {
+        putchar('#');
+    } else
+        putchar('.');
+
     ++cycle_count;
     if (cycle_count % 40 == 20) { signal_strength += x_reg * cycle_count; }
 }
@@ -77,7 +85,7 @@ int main(const int arg_count, const char * const * const args) {
         ++iter;
     }
 
-    printf("%d\n", signal_strength);
+    printf("\n%d\n", signal_strength);
 
     munmap(data, size);
 }
