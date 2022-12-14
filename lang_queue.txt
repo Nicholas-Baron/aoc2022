@@ -1,6 +1,7 @@
 C++
-Typescript
-F#
 Python
-Lisp
-Fortran
+Typescript
+C
+Haskell
+Rust
+Kotlin
