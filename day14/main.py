@@ -49,13 +49,17 @@ def make_slide(all_points: list[list[tuple[int, int]]]) -> tuple[slide_dict, int
 def add_sand(slide: slide_dict, lowest_y: int) -> bool:
     position = [500, 0]
 
+    if slide.get((position[0], position[1]), Tile.AIR) is Tile.SAND:
+        return False
+
     can_move_to = lambda pos: slide.get(pos, Tile.AIR) is Tile.AIR
 
     collided = False
     while not collided:
         position[1] += 1
-        if position[1] > lowest_y:
-            return False
+        if position[1] == lowest_y + 2:
+            position[1] -= 1
+            break
         if can_move_to(tuple(position)):
             continue
 
